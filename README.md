@@ -1,163 +1,265 @@
 # Physics-Informed Least Squares for a Simple Harmonic Oscillator
 
-This project demonstrates one of the central ideas behind modern Scientific Machine Learning (SciML): physical laws can dramatically improve learning when observational data is noisy or incomplete. Instead of relying entirely on data, the model is encouraged to satisfy the governing differential equation of the system itself.
+This project demonstrates one of the central ideas behind modern Scientific Machine Learning (SciML): physical laws can improve learning when observational data is noisy or incomplete. Instead of relying entirely on data, the model is encouraged to satisfy the governing differential equation of the system itself.
 
-Unlike a full Physics-Informed Neural Network (PINN), this project uses a simplified physics-informed least-squares framework. The goal is pedagogical clarity: to isolate and visualize how physics constraints suppress nonphysical behavior and reduce overfitting.
+This project does **not** implement a full neural-network Physics-Informed Neural Network (PINN). Instead, it uses a simplified **physics-informed least-squares** framework. The goal is to make the core idea behind physics-informed learning transparent: a model should fit the data, but it should also obey the physics.
 
 ## The Physical System
 
-We study the classical simple harmonic oscillator governed by:
+We study the classical simple harmonic oscillator governed by
 
-`d²x/dt² + x = 0`
+$$
+\frac{d^2x}{dt^2}+x=0.
+$$
 
-This equation appears throughout physics whenever a restoring force drives a system back toward equilibrium.
+This equation appears in many physical systems where a restoring force drives the system back toward equilibrium, including mass-spring systems, small-angle pendulums, LC circuits, molecular vibrations, and wave phenomena.
+
+The key physical idea is that acceleration points opposite to displacement. This feedback produces oscillatory motion.
 
 ## Analytical Solution
 
-We assume an exponential trial solution:
+To solve the differential equation, assume an exponential trial solution:
 
-`x(t) = e^(rt)`
+$$
+x(t)=e^{rt}.
+$$
 
-Differentiating twice gives:
+Then
 
-`d²x/dt² = r² e^(rt)`
+$$
+\frac{d^2x}{dt^2}=r^2e^{rt}.
+$$
 
-Substituting into the differential equation:
+Substituting into the oscillator equation gives
 
-`r² e^(rt) + e^(rt) = 0`
+$$
+r^2e^{rt}+e^{rt}=0.
+$$
 
-Factoring:
+Factoring out the exponential term,
 
-`e^(rt)(r² + 1) = 0`
+$$
+e^{rt}(r^2+1)=0.
+$$
 
-Since the exponential is never zero:
+Since \(e^{rt}\neq 0\), the characteristic equation is
 
-`r² + 1 = 0`
+$$
+r^2+1=0.
+$$
 
-which gives:
+Therefore,
 
-`r = ± i`
+$$
+r=\pm i.
+$$
 
-Using Euler’s identity:
+Using Euler's identity,
 
-`e^(it) = cos(t) + i sin(t)`
+$$
+e^{it}=\cos(t)+i\sin(t),
+$$
 
-the general real-valued solution becomes:
+the real-valued general solution becomes
 
-`x(t) = A cos(t) + B sin(t)`
+$$
+x(t)=A\cos(t)+B\sin(t).
+$$
 
-Applying the initial conditions:
+Applying the initial conditions
 
-`x(0) = 1`
-`x'(0) = 0`
+$$
+x(0)=1,\qquad x'(0)=0
+$$
 
-gives:
+gives
 
-`A = 1`
-`B = 0`
+$$
+A=1,\qquad B=0.
+$$
 
-Therefore:
+Therefore the exact physical solution is
 
-`x(t) = cos(t)`
+$$
+x(t)=\cos(t).
+$$
+
+This analytical solution is used as the ground-truth reference throughout the experiment.
 
 ## Noisy Observations
 
-Sparse noisy observations were generated directly from the analytical solution:
+Real scientific measurements are rarely perfect. Experimental data often includes sensor noise, calibration uncertainty, environmental disturbances, and incomplete sampling. To mimic this, sparse noisy observations are generated from the analytical solution:
 
 ```python
 x_data = np.cos(t_data) + noise
 ```
 
-The noise level was intentionally chosen to make the fitting problem challenging.
+The noise level is intentionally large enough that a purely data-driven model struggles to recover the underlying physical trajectory.
 
 ![True solution and noisy data](figures/01_true_solution_and_noisy_data.png)
 
 ## Traditional Data-Only Fitting
 
-The flexible least-squares basis model used in this project is:
+A purely data-driven model attempts only to minimize disagreement with the observations. In this project, the flexible basis model is
 
-`x(t) = A cos(t) + B sin(t) + Ct + D`
+$$
+x(t)=A\cos(t)+B\sin(t)+Ct+D.
+$$
 
-The oscillatory terms represent physically valid behavior, while the linear terms allow the solution to drift away from the governing physics.
+The terms \(A\cos(t)\) and \(B\sin(t)\) represent oscillatory behavior. The additional terms \(Ct+D\) allow the model to drift away from the true physics.
 
-The ordinary least-squares loss becomes:
+The ordinary data-fitting loss is
 
-`L_data = (1/N) Σ (x(t_i) - x_i)^2`
+$$
+\mathcal{L}_{data}
+=
+\frac{1}{N}
+\sum_{i=1}^{N}
+\left(x(t_i)-x_i\right)^2.
+$$
 
-This objective encourages the model to follow noisy observations closely, even when that behavior becomes nonphysical.
+Equivalently, in continuous form,
+
+$$
+\mathcal{L}_{data}
+=
+\int_{\Omega}
+\left(x(t)-x_{data}(t)\right)^2
+\,dt.
+$$
+
+This objective encourages the model to match noisy observations as closely as possible. However, by itself, it contains no knowledge of the governing differential equation. As a result, the fitted curve can follow noise and produce nonphysical behavior.
 
 ## Physics-Informed Least Squares
 
-The central idea behind physics-informed learning is to penalize violations of the governing differential equation directly.
+Physics-informed learning adds a penalty for violating the governing differential equation.
 
-The physics residual is defined as:
+For the oscillator,
 
-`r(t) = d²x/dt² + x(t)`
+$$
+\frac{d^2x}{dt^2}+x=0,
+$$
 
-A perfectly physical solution should satisfy:
+the physics residual is
 
-`r(t) = 0`
+$$
+r(t)=\frac{d^2x}{dt^2}+x(t).
+$$
+
+A perfectly physical solution satisfies
+
+$$
+r(t)=0
+$$
 
 throughout the domain.
 
-The physics loss becomes:
+The physics loss is defined as
 
-`L_phys = (1/M) Σ (d²x/dt²(t_j) + x(t_j))²`
+$$
+\mathcal{L}_{phys}
+=
+\frac{1}{M}
+\sum_{j=1}^{M}
+\left(
+\frac{d^2x}{dt^2}(t_j)+x(t_j)
+\right)^2.
+$$
 
-This term penalizes solutions that violate the governing equation.
+Equivalently,
 
-## Initial Conditions
+$$
+\mathcal{L}_{phys}
+=
+\int_{\Omega}
+\left(
+\frac{d^2x}{dt^2}+x
+\right)^2
+\,dt.
+$$
 
-The initial-condition penalty term is:
+This term penalizes solutions that violate the oscillator equation. The model is no longer rewarded only for matching noisy data; it is also encouraged to remain physically admissible.
 
-`L_IC = (x(0)-1)² + (x'(0)-0)²`
+## Initial Condition Constraint
 
-This selects the correct physical trajectory from the oscillator family.
+The initial conditions are enforced through an additional penalty term:
+
+$$
+\mathcal{L}_{IC}
+=
+\left(x(0)-1\right)^2
++
+\left(x'(0)-0\right)^2.
+$$
+
+This selects the correct trajectory from the family of physically valid oscillator solutions,
+
+$$
+x(t)=A\cos(t)+B\sin(t).
+$$
+
+Without the initial condition term, multiple physically valid oscillatory solutions would still be possible.
 
 ## Full Optimization Objective
 
-The complete objective function becomes:
+The full physics-informed least-squares objective is
 
-`L = λ_data L_data + λ_phys L_phys + λ_IC L_IC`
+$$
+\mathcal{L}
+=
+\lambda_{data}\mathcal{L}_{data}
++
+\lambda_{phys}\mathcal{L}_{phys}
++
+\lambda_{IC}\mathcal{L}_{IC}.
+$$
 
-The three weights control the balance between:
-- fitting observations,
-- satisfying the differential equation,
-- enforcing the initial conditions.
+Here, \(\lambda_{data}\), \(\lambda_{phys}\), and \(\lambda_{IC}\) control the relative importance of fitting the observations, satisfying the physics, and enforcing the initial conditions.
 
-As the physics weight increases, the learned solution becomes smoother and more physically admissible.
+When \(\lambda_{data}\) dominates, the model behaves more like a traditional data-only fit and may follow noisy measurements too aggressively. When \(\lambda_{phys}\) increases, the model is pushed toward solutions that better satisfy the governing differential equation.
+
+## Effect of the Physics Constraint
+
+The next figure shows how the learned trajectory changes as the physics weight increases. With a small physics weight, the model can still follow noisy behavior. As the physics penalty becomes stronger, the trajectory becomes smoother and more physically consistent.
 
 ![Effect of physics weight](figures/03_effect_of_physics_weight.png)
 
+The key transition is from fitting the noisy observations directly toward finding the best physically admissible explanation of those observations.
+
 ## Prediction Error Reduction
 
-The RMSE comparison demonstrates substantial reduction in prediction error once physics constraints are introduced.
+The RMSE comparison shows that adding the physics constraint significantly reduces the prediction error. The data-only fit produces the largest error because it follows noise too aggressively. The physics-informed solution stays closer to the true oscillator.
 
-The strongest physics-informed solution reduced the prediction error approximately from:
+In this experiment, the error is reduced approximately from
 
-`0.42 → 0.13`
+$$
+0.42 \rightarrow 0.13
+$$
 
-despite using exactly the same noisy observations.
+using the same noisy observations.
 
 ![RMSE comparison](figures/04_horizontal_rmse_comparison.png)
 
 ## Physics Residual Reduction
 
-The norm of the physics residual is:
+The final figure measures the physics residual norm,
 
-`|| d²x/dt² + x ||`
+$$
+\left\|
+\frac{d^2x}{dt^2}+x
+\right\|.
+$$
 
-As the physics weight increases, the residual decreases significantly, indicating stronger agreement with the governing differential equation.
+As \(\lambda_{phys}\) increases, the residual decreases, showing that the learned solution increasingly satisfies the differential equation itself.
 
 ![Physics residual comparison](figures/05_lollipop_physics_residual.png)
 
+This is important because the model is not merely producing a visually smooth curve. It is becoming more consistent with the governing physics.
+
 ## Conclusion
 
-This small experiment captures one of the foundational ideas behind Scientific Machine Learning: physical laws provide a powerful inductive bias.
+This project demonstrates the core intuition behind physics-informed learning: physical laws can act as powerful regularizers.
 
-Traditional machine-learning models search over a vast space of arbitrary functions. Physics-informed methods instead restrict the search to functions that are simultaneously:
-- data-consistent,
-- mathematically smooth,
-- physically admissible.
+A traditional data-only model searches for a curve that best matches noisy observations. A physics-informed model searches for a curve that both fits the data and satisfies the governing physical law.
 
-Although this project uses a simplified least-squares framework rather than a full neural-network PINN, it demonstrates the core intuition behind physics-informed learning in a transparent and mathematically interpretable way.
+Although this project uses a simplified least-squares formulation rather than a full neural-network PINN, it captures the main idea behind PINNs and Scientific Machine Learning in a transparent and mathematically interpretable way.
