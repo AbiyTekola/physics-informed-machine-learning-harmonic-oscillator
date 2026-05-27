@@ -36,13 +36,19 @@ $$
 r^2e^{rt}+e^{rt}=0.
 $$
 
-Factoring out the exponential term,
+Factoring out the exponential term gives
 
 $$
 e^{rt}(r^2+1)=0.
 $$
 
-Since \(e^{rt}\neq 0\), the characteristic equation is
+Since
+
+$$
+e^{rt}\neq 0,
+$$
+
+the characteristic equation is
 
 $$
 r^2+1=0.
@@ -69,13 +75,17 @@ $$
 Applying the initial conditions
 
 $$
-x(0)=1,\qquad x'(0)=0
+x(0)=1,
+\qquad
+x'(0)=0
 $$
 
 gives
 
 $$
-A=1,\qquad B=0.
+A=1,
+\qquad
+B=0.
 $$
 
 Therefore the exact physical solution is
@@ -106,7 +116,21 @@ $$
 x(t)=A\cos(t)+B\sin(t)+Ct+D.
 $$
 
-The terms \(A\cos(t)\) and \(B\sin(t)\) represent oscillatory behavior. The additional terms \(Ct+D\) allow the model to drift away from the true physics.
+The terms
+
+$$
+A\cos(t)
+\quad \text{and} \quad
+B\sin(t)
+$$
+
+represent oscillatory behavior. The additional terms
+
+$$
+Ct+D
+$$
+
+allow the model to drift away from the true physics.
 
 The ordinary data-fitting loss is
 
@@ -214,9 +238,19 @@ $$
 \lambda_{IC}\mathcal{L}_{IC}.
 $$
 
-Here, \(\lambda_{data}\), \(\lambda_{phys}\), and \(\lambda_{IC}\) control the relative importance of fitting the observations, satisfying the physics, and enforcing the initial conditions.
+Here, the parameters
 
-When \(\lambda_{data}\) dominates, the model behaves more like a traditional data-only fit and may follow noisy measurements too aggressively. When \(\lambda_{phys}\) increases, the model is pushed toward solutions that better satisfy the governing differential equation.
+$$
+\lambda_{data},
+\qquad
+\lambda_{phys},
+\qquad
+\lambda_{IC}
+$$
+
+control the relative importance of fitting the observations, satisfying the physics, and enforcing the initial conditions.
+
+When the data weight dominates, the model behaves more like a traditional data-only fit and may follow noisy measurements too aggressively. When the physics weight increases, the model is pushed toward solutions that better satisfy the governing differential equation.
 
 ## Effect of the Physics Constraint
 
@@ -250,7 +284,7 @@ $$
 \right\|.
 $$
 
-As \(\lambda_{phys}\) increases, the residual decreases, showing that the learned solution increasingly satisfies the differential equation itself.
+As the physics weight increases, the residual decreases, showing that the learned solution increasingly satisfies the differential equation itself.
 
 ![Physics residual comparison](figures/05_lollipop_physics_residual.png)
 
